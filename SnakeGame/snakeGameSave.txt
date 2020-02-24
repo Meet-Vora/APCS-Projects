@@ -1,0 +1,375 @@
+import java.io.PrintWriter;
+import java.util.Scanner;
+import java.io.File;
+import java.io.FileNotFoundException;
+
+/**
+ *	SnakeGame is an individually played game in which the objective is to
+ *	control a snake and eat as many targets as possible. The game takes place in
+ *	a 20x25 box in which the target spawns at a random location. Additionally, 
+ *	the user is able to save their progress and load it at any time.The game
+ *	will end when the user's snake collides with itself or the border, the
+ *	user's score is 495, or the user chooses to quit the game at any time.
+ *		
+ *	@author	Meet Vora
+ *	@since	November 15th, 2018
+ */
+
+public class SnakeGame {
+	
+	private Snake snake;		// Snake object
+	private SnakeBoard board;	// SnakeBoard object
+	private Coordinate target;	// Coordinate object
+	private int score;
+
+	public SnakeGame() {
+
+		snake = new Snake();
+		board = new SnakeBoard(20,25);
+		target = new Coordinate((int)(Math.random() * board.getHeight()), 
+			(int)(Math.random() * board.getWidth()));
+		// target = new Coordinate((int)(Math.random()*25),(int)(Math.random()*20));
+	}
+
+	public static void main(String[] args) {
+
+		SnakeGame game = new SnakeGame();
+		// board.printBoard(snake,target);
+		game.run();
+	}
+
+	/**
+	 *	Calls different helper methods and implements them using different
+	 *	conditions to run the game. Reads the user's input, and based on their
+	 *	directions, moves the snake across the board. Users are able to quit the 
+	 *	game as well.
+	 */
+	public void run() {
+
+		String quit = "";
+		boolean isQuit = false;
+		String input = "";
+		char movement = 0;
+
+		printIntroduction();
+
+		// newTarget();
+
+		do {
+			board.printBoard(snake,target);
+			do {
+				input = Prompt.getString("Score: " + score + " (w - North, " + 
+					"s - South, d - East, a - West, h - Help");
+				input = input.toLowerCase();
+
+			} while (!input.equals("w") && !input.equals("s") && !input.equals("d") && 
+					 !input.equals("a") && !input.equals("h") && !input.equals("f") && 
+					 !input.equals("r") && !input.equals("q"));
+			
+			movement = input.charAt(0);
+			// if(input.equals("a") || input.equals("s") || 
+			// 		input.equals("d") || input.equals("w"))
+			// 	chooseMoveDirection(input.charAt(0));
+			if (input.equals("f")) {
+
+				isQuit = saveGame();
+			}
+			else if (input.equals("h"))
+				helpMenu();
+			else if (input.equals("q")) {
+				
+				quit = Prompt.getString("\nDo you want to quit? (y or n)");
+				if (quit.equalsIgnoreCase("y"))
+					isQuit = true;
+			}
+			else if (input.equals("r"))
+				loadGame();
+			else {
+				isQuit = checkForCollision(movement);
+				if(!isQuit);
+					chooseMoveDirection(movement);
+			}
+		} while (score < board.getWidth()*board.getHeight() - 5 && !isQuit);
+		
+		printEndMessage();
+	}
+
+	/**
+	 *	Generates random coordinates for the target until its location is not
+	 *	the same as any coordinate of the snake. Checks by calling another 
+	 *	helper method.
+	 */ 
+	public void newTarget() {
+
+		int targRow, targCol;	// coordinates for the target
+		char[][] newBoard = board.getBoard();
+
+		targRow = (int)(Math.random() * board.getHeight());
+		targCol = (int)(Math.random() * board.getWidth());
+
+		while(newBoard[targRow][targCol] != ' ') {
+
+			// System.out.println("HELLOOO");
+			targRow = (int)(Math.random() * board.getHeight()); 
+			targCol = (int)(Math.random() * board.getWidth());
+		}
+
+		// assign target generated coordinates
+		target = new Coordinate(targRow,targCol);
+	}
+
+	/**
+	 *	Checks if target location is the same as any location of the snake's,
+	 *	either its head or tail
+	 *	@return 	true if not same location; false otherwise
+	 */
+	public boolean validLocation() {
+
+		for (int a = 0; a < snake.size(); a++) {
+
+			if(target.getRow() == snake.get(a).getRow() && 
+					target.getCol() == snake.get(a).getCol())
+				return false;
+		}
+		return true;
+	}
+
+	/**
+	 *	Uses the user's input to decide which direction to move in. Based on
+	 *	their input, parameters are passed to a helper method where the snake is
+	 *	moved on the board.
+	 *	@param movement 	indicates direction of snake's movement
+	 */
+	public void chooseMoveDirection(char movement) {
+
+		// calls helper method with different parameters based on user's input
+		switch(movement) {
+
+			case 'a': moveSnake(((Coordinate) snake.get(0)).getRow(),	// move left
+						((Coordinate)snake.get(0)).getCol() - 1);
+				break;
+		  	case 'w': moveSnake(((Coordinate) snake.get(0)).getRow() - 1,	// move up
+		  				((Coordinate)snake.get(0)).getCol());
+				break;
+		 	case 'd': moveSnake(((Coordinate) snake.get(0)).getRow(),	// move right
+		 				((Coordinate)snake.get(0)).getCol() + 1);
+				break;
+			case 's': moveSnake(((Coordinate) snake.get(0)).getRow() + 1,	// move down
+						((Coordinate)snake.get(0)).getCol());
+				break;
+		}
+	}
+
+	/**
+	 *	Moves snake to a new position based on its current x- and y-coordinates.
+	 *	If the target has the same location as the head of the snake, then the
+	 *	score is incremented by one.
+	 *	@param snakeX 	x-coordinate of snake's head
+	 *	@param snakeY 	y-coordinate of snake's head
+	 */
+	public void moveSnake(int snakeX, int snakeY) {
+
+		if (validLocation()) {
+			if (sameLocation(snakeX,snakeY)) {
+
+				score++;
+				newTarget();
+			}
+			// removes last asterick from snake's tail 
+			else
+				snake.remove(snake.size()-1);
+
+			// adds new location of snake's head to arraylist
+			snake.add(0, new Coordinate(snakeX, snakeY));
+		}
+	}
+
+	/**
+	 *	Checks to see if there has been a collsion between the head of the snake
+	 *	and its tail or the border.
+	 *	@return 	true if there is a collision; false otherwise
+	 */
+	public boolean checkForCollision(char movement) {
+	
+		// stores x- and y-coordinates of snake's head
+		int headRow = snake.get(0).getRow();
+		int headCol = snake.get(0).getCol();
+
+		// compares each location of the snake's tail to its head to see if 
+		// there is any overlap using the direction of the snake's movement
+		for (int a = 1; a < snake.size(); a++) {
+
+			if (movement == 'w' && headRow - 1 == snake.get(a).getRow() &&
+					headCol == snake.get(a).getCol())
+				return true;
+			else if (movement == 's' && headRow + 1 == snake.get(a).getRow() &&
+					headCol == snake.get(a).getCol())
+				return true;
+			else if (movement == 'a' && headRow == snake.get(a).getRow() &&
+					headCol - 1 == snake.get(a).getCol())
+				return true;
+			else if (movement == 'd' && headRow == snake.get(a).getRow() &&
+					headCol + 1 == snake.get(a).getRow())
+				return true;
+		}
+	
+		// if snake runs into border based on movement and location near
+		// the border
+		if ((movement == 'w' && headRow == 0)  ||
+			(movement == 's' && headRow == 19) ||
+			(movement == 'a' && headCol == 0)  ||
+			(movement == 'd' && headCol == 24))
+				return true;
+
+		return false;
+	}
+
+	/**
+	 *	Restores previous user's progress of the game. Reads the file that the
+	 *	information was stored in to get information about the game such as
+	 *	the current score, the snake's length, and the location of the target 
+	 *	and the snake.
+	 */
+	public void loadGame() {
+
+		Scanner input = null;
+		String fileName = "snakeGameSave.txt";
+		int targetX = 0,targetY = 0, snakeSize = 0;
+		String line = "";
+
+		// clears all input of the snake arraylist
+		snake.clear();
+
+		// Calls method in FileUtils to open file
+		input = FileUtils.openToRead(fileName);
+		
+		// reads current score
+		line = input.nextLine();
+		score = Integer.parseInt(line.substring(6));
+
+		// reads x- and y- coordinates of target
+		line = input.next();
+		targetX = input.nextInt();
+		targetY = input.nextInt();
+
+		// reads size of snake
+		line = input.next();
+		snakeSize = input.nextInt();
+
+		// reads the rest of the coordinates of the snake and adds them to
+		// the snake arraylist
+		while(input.hasNext()) {
+			snake.add(new Coordinate(input.nextInt(), input.nextInt()));
+		}
+
+		// closes the file that was being read
+		input.close();
+
+		// creates the new target object using the recorded coordinatess
+		target = new Coordinate(targetX,targetY);
+
+		// reprint the board using the loaded game information
+		// board.printBoard(snake,target);
+	}
+
+	/**
+	 *	Saves game information into a text file. Stores score, target
+	 *	coordinates, snake size, and snake coordinates. Prints congratulatory
+	 *	message at the end. 
+	 */
+	public boolean saveGame() {
+
+		PrintWriter writer = null;
+		String fileName = "snakeGameSave.txt";
+		String input = "";
+
+		System.out.print("\n");
+
+		// keep asking for user input if input is not "y" or "n"
+		do {
+			// make sure user wants to save game
+			input = Prompt.getString("Save game? (y or n)");
+			input = input.toLowerCase();
+		} while (!input.equals("y") && !input.equals("n"));
+		
+		// if "y, then open the file using PrintWriter
+		if(input.equals("y")) {	
+			
+			writer = FileUtils.openToWrite(fileName);
+
+			// print the score, target and snake coordinates, and snake length to
+			// text file 
+			writer.println("Score " + score);
+			writer.println("Target " + target.getRow() + " " + target.getCol());
+			writer.println("Snake " + snake.size());
+			for (int a = 0; a <= snake.size() - 1; a++)
+		    	writer.println(((Coordinate)snake.get(a)).getRow() + 
+		    		" " + ((Coordinate)snake.get(a)).getCol());
+	    
+	    	// print message to tell user that game information is saved
+    		System.out.println("\nSaving game to file " + fileName);
+    		
+    		// closes the file the was being written to
+    		writer.close();
+    		return true;
+		}
+	
+		return false;
+	}
+
+	/**
+	 *	Checks if the location of the target is the same as the location of the
+	 *	snake's head.
+	 *	@param snakeX 	x-coordinate of snake's head
+	 *	@param snakeY 	y-coordinate of snake's head
+	 *	@return 		true if same location; false otherwise
+	 */
+	public boolean sameLocation(int snakeX, int snakeY) {
+
+		if(target.equals(new Coordinate(snakeX,snakeY)))
+			return true;
+		return false;
+	}
+
+	/**
+	 *	Prints standard ending message at the end of each run.
+	 */
+	public void printEndMessage() {
+
+		System.out.println("\nGame is over\nScore = " + score);
+		System.out.println("\nThanks for playing SnakeGame!!");
+	}
+
+	/**	Print the game introduction	*/
+	public void printIntroduction() {
+		System.out.println("  _________              __            ________");
+		System.out.println(" /   _____/ ____ _____  |  | __ ____  /  _____/_____    _____   ____");
+		System.out.println(" \\_____  \\ /    \\\\__  \\ |  |/ // __ \\/   \\  ___\\__  \\  /     \\_/ __ \\");
+		System.out.println(" /        \\   |  \\/ __ \\|    <\\  ___/\\    \\_\\  \\/ __ \\|  Y Y  \\  ___/");
+		System.out.println("/_______  /___|  (____  /__|_ \\\\___  >\\______  (____  /__|_|  /\\___  >");
+		System.out.println("        \\/     \\/     \\/     \\/    \\/        \\/     \\/      \\/     \\/");
+		System.out.println("\nWelcome to SnakeGame!");
+		System.out.println("\nA snake @****** moves around a board " +
+							"eating targets \"+\".");
+		System.out.println("Each time the snake eats the target it grows " +
+							"another * longer.");
+		System.out.println("The objective is to grow the longest it can " +
+							"without moving into");
+		System.out.println("itself or the wall.");
+		System.out.println("\n");
+	}
+	
+	/**	Print help menu	*/
+	public void helpMenu() {
+		System.out.println("\nCommands:\n" +
+							"  w - move north\n" +
+							"  s - move south\n" +
+							"  d - move east\n" +
+							"  a - move west\n" +
+							"  h - help\n" +
+							"  f - save game to file\n" +
+							"  r - restore game from file\n" +
+							"  q - quit");
+		Prompt.getString("Press enter to continue");
+	}
+}
